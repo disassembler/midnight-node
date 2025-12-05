@@ -279,7 +279,6 @@ impl CardanoClient {
 
         let mut tx_builder = TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             .tx_in(
                 &hex::encode(tx_in.transaction.id),
@@ -365,7 +364,6 @@ impl CardanoClient {
 
         let mut tx_builder = TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             .tx_in(
                 &hex::encode(tx_in.transaction.id),
@@ -488,7 +486,6 @@ impl CardanoClient {
 
         let mut tx_builder = whisky::TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             .tx_in(
                 &input_tx_hash,
@@ -542,7 +539,6 @@ impl CardanoClient {
         let network: Network = Network::Custom(self.constants.cost_model.clone());
         let mut tx_builder = whisky::TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             .tx_in(
                 &input_tx_hash,
@@ -614,7 +610,7 @@ impl CardanoClient {
     }
 
     pub async fn find_utxo_by_tx_id(&self, address: &str, tx_id_hex: String) -> Option<OgmiosUtxo> {
-        const MAX_ATTEMPTS: u32 = 10;
+        const MAX_ATTEMPTS: u32 = 120;
         const PAUSE: Duration = Duration::from_secs(2);
         let tx_id_bytes = hex::decode(tx_id_hex.clone()).expect("invalid hex tx_id");
         let request = OgmiosRequest::QueryUtxo {
@@ -680,7 +676,7 @@ impl CardanoClient {
     pub async fn is_utxo_unspent_for_3_blocks(&self, address: &str, tx_id: &str) -> bool {
         // Get the current block number (slot) as the starting point
         const SLOTS_NUMBER: u64 = 3;
-        const LIMIT: i32 = 5;
+        const LIMIT: i32 = 50;
         let response = Self::ogmios_request(&self.ogmios_settings, OgmiosRequest::QueryTip)
             .await
             .unwrap();
@@ -879,7 +875,6 @@ impl CardanoClient {
 
         let mut tx_builder = TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             // Add regular input for fees
             .tx_in(
@@ -1018,7 +1013,6 @@ impl CardanoClient {
 
         let mut tx_builder = TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             .tx_in(
                 &hex::encode(tx_in.transaction.id),
@@ -1109,7 +1103,6 @@ impl CardanoClient {
         let network: Network = Network::Custom(self.constants.cost_model.clone());
         let mut tx_builder = whisky::TxBuilder::new_core();
         tx_builder
-            .network(network.clone())
             .set_evaluator(Box::new(OfflineTxEvaluator::new()))
             .tx_in(
                 &input_tx_hash,

@@ -927,66 +927,90 @@ impl CardanoClient {
             .try_into()
             .unwrap()
     }
-}
 
-pub async fn create_redemption_contract(
-	destination_address: &str,
-	increment_amount: u64,
-	increments: u32,
-	tx_in: &OgmiosUtxo,
-	cnight_utxo: &OgmiosUtxo,
-	wallet: &Wallet,
-) -> [u8; 32] {
-	let redemption_address = get_redemption_address();
-	println!("Redemption contract address: {}", redemption_address);
-	let cardano_address_hex = Address::from_bech32(destination_address).unwrap().to_hex();
-	let data = serde_json::json!({
-		"constructor": 0,
-		"fields": [
-			{ "bytes": &cardano_address_hex },
-			{ "int": increment_amount },
-			{ "int": 0 },
-			{ "int": increments },
-			{ "int": 0 }
-		]
-	});
-	let mut tx_builder = whisky::TxBuilder::new_core();
-	tx_builder
-		.network(Network::Custom(get_local_env_cost_models()))
-		.set_evaluator(Box::new(OfflineTxEvaluator::new()))
-		.tx_in(
-			&hex::encode(tx_in.transaction.id),
-			tx_in.index.into(),
-			&build_asset_vector(tx_in),
-			&destination_address,
-		)
-		.tx_in(
-			&hex::encode(cnight_utxo.transaction.id),
-			cnight_utxo.index.into(),
-			&build_asset_vector(cnight_utxo),
-			&destination_address,
-		)
-		.tx_out(
-			&redemption_address,
-			&vec![
-				Asset::new_from_str("lovelace", &2000000.to_string()),
-				Asset::new_from_str(
-					&get_cnight_token_policy_id(),
-					&(increment_amount * increments as u64).to_string(),
-				),
-			],
-		)
-		.tx_out_inline_datum_value(&WData::JSON(serde_json::to_string(&data).unwrap()))
-		.required_signer_hash(&wallet.account.public_key.hash().to_hex())
-		.change_address(&destination_address)
-		.complete_sync(None)
-		.unwrap();
+    pub async fn create_redemption_contract(
+        &self,
+        destination_address: &str,
+        increment_amount: u64,
+        increments: u32,
+        tx_in: &OgmiosUtxo,
+        cnight_utxo: &OgmiosUtxo,
+    ) -> Result<SubmitTransactionResponse, OgmiosClientError> {
+        let redemption_address = self.constants.policies.get_redemption_address();
+        println!("Redemption contract address: {}", redemption_address);
+        let cardano_address_hex = Address::from_bech32(destination_address).unwrap().to_hex();
+        let data = serde_json::json!({
+            "constructor": 0,
+            "fields": [
+                { "bytes": &cardano_address_hex },
+                { "int": increment_amount },
+                { "int": 0 },
+                { "int": increments },
+                { "int": 0 }
+            ]
+        });
+        let network = Network::Custom(self.constants.cost_model.clone());
+        let mut tx_builder = whisky::TxBuilder::new_core();
+        tx_builder
+            .network(network.clone())
+            .set_evaluator(Box::new(OfflineTxEvaluator::new()))
+            .tx_in(
+                &hex::encode(tx_in.transaction.id),
+                tx_in.index.into(),
+                &Self::build_asset_vector(tx_in),
+                &destination_address,
+            )
+            .tx_in(
+                &hex::encode(cnight_utxo.transaction.id),
+                cnight_utxo.index.into(),
+                &Self::build_asset_vector(cnight_utxo),
+                &destination_address,
+            )
+            .tx_out(
+                &redemption_address,
+                &vec![
+                    Asset::new_from_str("lovelace", &2000000.to_string()),
+                    Asset::new_from_str(
+                        &self.constants.policies.cnight_token_policy_id(),
+                        &(increment_amount * increments as u64).to_string(),
+                    ),
+                ],
+            )
+            .tx_out_inline_datum_value(&WData::JSON(serde_json::to_string(&data).unwrap()))
+            .required_signer_hash(
+                &self
+                    .wallet
+                    .addresses
+                    .base_address
+                    .as_ref()
+                    .unwrap()
+                    .stake_cred()
+                    .to_keyhash()
+                    .unwrap()
+                    .to_hex(),
+            )
+            .change_address(&destination_address)
+            .complete_sync(None)
+            .unwrap();
 
-	let signed_tx = wallet.sign_tx(&tx_builder.tx_hex());
-	let tx_bytes = hex::decode(signed_tx.unwrap()).expect("Failed to decode hex string");
+        let signed_tx = self.wallet.sign_tx(&tx_builder.tx_hex());
 
-	let client = get_ogmios_client().await;
-	let response = client.submit_transaction(&tx_bytes).await.unwrap();
-	println!("Transaction submitted, response: {:?}", response);
-	response.transaction.id
+        // sign with stake key
+        let stake_signing_key = Self::derive_stake_signing_key_from_mnemonic(&self.wallet).unwrap();
+        let stake_wallet = Wallet::new_cli(&stake_signing_key.to_hex()).unwrap();
+        let signed_by_stake_tx = stake_wallet.sign_tx(&signed_tx.unwrap());
+
+        let tx_bytes =
+            hex::decode(signed_by_stake_tx.unwrap()).expect("Failed to decode hex string");
+        let request = OgmiosRequest::SubmitTx { tx_bytes };
+        let response = Self::ogmios_request(&self.ogmios_settings, request)
+            .await
+            .unwrap();
+        match response {
+            OgmiosResponse::SubmitTx(res) => Ok(res),
+            _ => Err(OgmiosClientError::RequestError(
+                "Unexpected response type".into(),
+            )),
+        }
+    }
 }

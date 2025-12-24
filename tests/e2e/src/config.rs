@@ -1,5 +1,6 @@
+use serde::Deserialize;
 use whisky::csl::NetworkInfo as CardanoNetworkInfo;
-use whisky::{LanguageVersion, Network as CardanoNetwork, BuilderDataType};
+use whisky::{BuilderDataType, LanguageVersion, Network as CardanoNetwork};
 
 #[derive(Clone)]
 pub struct Settings {
@@ -159,48 +160,15 @@ pub struct Policies {
     pub redemption_validator_policy_file: String,
 }
 
-
 #[derive(Debug, Deserialize)]
 struct Validator {
-	title: String,
-	compiledCode: String,
+    title: String,
+    compiledCode: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct Blueprint {
-	validators: Vec<Validator>,
-}
-
-pub fn load_redemption_cbor() -> String {
-	let cfg = load_config();
-	let file_content =
-		fs::read_to_string(&cfg.redemption_validator_policy_file).expect("Failed to read file");
-	let blueprint: Blueprint = serde_json::from_str(&file_content).expect("Invalid JSON");
-	let redemption = blueprint
-		.validators
-		.into_iter()
-		.find(|v| v.title == "redemption.redemption.spend")
-		.expect("Redemption validator not found");
-	redemption.compiledCode
-}
-
-pub fn get_redemption_script() -> String {
-	let cnight_policy_param = serde_json::json!({ "bytes": get_cnight_token_policy_id() });
-	let asset_name_param = serde_json::json!({ "bytes": "" });
-	let params: &[&str] = &[
-		&serde_json::to_string(&cnight_policy_param).unwrap(),
-		&serde_json::to_string(&asset_name_param).unwrap(),
-	];
-	let redemption_script =
-		whisky::apply_params_to_script(&load_redemption_cbor(), &params, BuilderDataType::JSON);
-	redemption_script.unwrap()
-}
-
-pub fn get_redemption_address() -> String {
-	let cbor_hex = get_redemption_script();
-	let script_hash = whisky::get_script_hash(&cbor_hex, LanguageVersion::V3);
-	let network = NetworkInfo::testnet_preview().network_id();
-	whisky::script_to_address(network, &script_hash.unwrap(), None)
+    validators: Vec<Validator>,
 }
 
 impl Policies {
@@ -259,5 +227,38 @@ impl Policies {
     pub fn cnight_token_policy_id(&self) -> String {
         let script_hash = whisky::get_script_hash(&self.cnight_token_cbor, LanguageVersion::V2);
         script_hash.expect("Error calculating `cnight_token_policy_id`")
+    }
+
+    pub fn load_redemption_cbor(&self) -> String {
+        let file_content = std::fs::read_to_string(&self.redemption_validator_policy_file)
+            .expect("Failed to read file");
+        let blueprint: Blueprint = serde_json::from_str(&file_content).expect("Invalid JSON");
+        let redemption = blueprint
+            .validators
+            .into_iter()
+            .find(|v| v.title == "redemption.redemption.spend")
+            .expect("Redemption validator not found");
+        redemption.compiledCode
+    }
+
+    pub fn get_redemption_script(&self) -> String {
+        let cnight_policy_param = serde_json::json!({ "bytes": self.cnight_token_policy_id() });
+        let asset_name_param = serde_json::json!({ "bytes": "" });
+        let params: &[&str] = &[
+            &serde_json::to_string(&cnight_policy_param).unwrap(),
+            &serde_json::to_string(&asset_name_param).unwrap(),
+        ];
+        let redemption_script = whisky::apply_params_to_script(
+            &self.load_redemption_cbor(),
+            &params,
+            BuilderDataType::JSON,
+        );
+        redemption_script.unwrap()
+    }
+
+    pub fn get_redemption_address(&self) -> String {
+        let cbor_hex = self.get_redemption_script();
+        let script_hash = whisky::get_script_hash(&cbor_hex, LanguageVersion::V3);
+        whisky::script_to_address(self.network_info.network_id(), &script_hash.unwrap(), None)
     }
 }

@@ -1701,39 +1701,67 @@ async fn deregister_first_mapping() {
 
 #[tokio::test]
 async fn cnight_in_redemption_contract_produces_dust() {
-	// Create Alice wallet
-	let alice = create_wallet();
-	let alice_bech32 = get_cardano_address_as_bech32(&alice);
-	let dust_hex = new_dust_hex(32);
+    // Create Alice wallet
+    let settings = Settings::default();
+    let alice = CardanoClient::new(settings.ogmios_client, settings.constants).await;
+    let alice_bech32 = alice.address_as_bech32();
+    println!("New Cardano wallet created: {:?}", alice_bech32);
 
-	// Fund Alice wallet and mint cNIGHT
-	let alice_collateral = make_collateral(&alice_bech32).await;
-	let minting_script = load_cbor(&load_config().cnight_token_policy_file);
-	let amount = 1000;
-	let tx_id = mint_tokens(
-		&alice,
-		&get_cnight_token_policy_id(),
-		"",
-		&amount.to_string(),
-		&minting_script,
-	)
-	.await;
-	println!("Minted {} cNIGHT. Tx: {:?}", amount, tx_id);
+    let alice_midnight = MidnightClient::new(settings.node_client).await;
+    let midnight_wallet_seed = MidnightClient::new_seed();
+    let dust_hex = MidnightClient::new_dust_hex(midnight_wallet_seed);
+    let dust_bytes: Vec<u8> = hex::decode(&dust_hex).unwrap().try_into().unwrap();
+    println!(
+        "Registering Cardano wallet {} with DUST address {}",
+        alice_bech32, dust_hex
+    );
 
-	let cnight_utxo = find_utxo_by_tx_id(&alice_bech32, &hex::encode(&tx_id))
-		.await
-		.expect("No cNIGHT UTXO found after minting");
+    // Fund Alice wallet
+    let faucet = global_faucet_manager().await;
+    let collateral_utxo = faucet.request_tokens(&alice_bech32, 5_000_000).await;
+    let tx_in = faucet.request_tokens(&alice_bech32, 6_000_000).await;
+    faucet.request_tokens(&alice_bech32, 7_000_000).await;
 
-	// Create redemption contract
-	let increment_amount = 199;
-	let increments = 3;
-	create_redemption_contract(
-		&alice_bech32,
-		increment_amount,
-		increments,
-		&alice_collateral,
-		&cnight_utxo,
-		&alice,
-	)
-	.await;
+    // Register Alice
+    let register_tx_id = alice
+        .register(&dust_hex, &tx_in, &collateral_utxo)
+        .await
+        .expect("Failed to register tx")
+        .transaction
+        .id;
+    println!(
+        "Registration transaction submitted with hash: {}",
+        hex::encode(register_tx_id)
+    );
+
+    // Mint cNIGHT tokens
+    let amount = 1000;
+    let tx_id = alice
+        .mint_tokens(amount, &collateral_utxo)
+        .await
+        .expect("Failed to mint tokens")
+        .transaction
+        .id;
+    println!("Minted {} cNIGHT. Tx: {}", amount, hex::encode(tx_id));
+
+    let cnight_utxo = match alice
+        .find_utxo_by_tx_id(&alice_bech32, hex::encode(tx_id))
+        .await
+    {
+        Some(cnight_utxo) => cnight_utxo,
+        None => panic!("No cNIGHT UTXO found after minting"),
+    };
+
+    // Create redemption contract
+    let increment_amount = 199;
+    let increments = 3;
+    alice
+        .create_redemption_contract(
+            &alice_bech32,
+            increment_amount,
+            increments,
+            &collateral_utxo,
+            &cnight_utxo,
+        )
+        .await;
 }

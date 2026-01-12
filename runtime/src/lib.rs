@@ -556,6 +556,13 @@ impl pallet_scheduler::Config for Runtime {
 	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 }
 
+impl pallet_utility::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
 impl pallet_partner_chains_session::Config for Runtime {
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ShouldEndSession = ValidatorManagementSessionManager<Runtime>;
@@ -961,7 +968,8 @@ mod runtime {
 	pub type Scheduler = pallet_scheduler::Pallet<Runtime>;
 	#[runtime::pallet_index(19)]
 	pub type TxPause = pallet_tx_pause::Pallet<Runtime>;
-	// SafeMode: pallet_safe_mode = 20,
+	#[runtime::pallet_index(20)]
+	pub type Utility = pallet_utility::Pallet<Runtime>;
 
 	// BEEFY Bridges support.
 	#[runtime::pallet_index(21)]

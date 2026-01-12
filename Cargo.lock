@@ -7794,12 +7794,8 @@ name = "midnight-primitives-system-parameters"
 version = "0.1.0"
 dependencies = [
  "hex",
- "parity-scale-codec",
- "scale-info",
  "serde",
  "sidechain-domain",
- "sp-core",
- "sp-runtime",
 ]
 
 [[package]]
@@ -9701,7 +9697,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "log",
  "midnight-node-ledger",
  "midnight-node-ledger-helpers",
  "midnight-node-res",
@@ -9969,7 +9964,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -9990,7 +9984,6 @@ dependencies = [
  "pallet-system-parameters",
  "sc-client-api",
  "serde",
- "sidechain-domain",
  "sp-api",
  "sp-blockchain",
  "sp-core",

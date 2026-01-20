@@ -398,8 +398,44 @@ pub fn new_partial(
 	Ok(partial_components)
 }
 
+pub async fn new_full(
+	config: Configuration,
+	epoch_config: MainchainEpochConfig,
+	data_sources: DataSources,
+	storage_monitor_params: sc_storage_monitor::StorageMonitorParams,
+	storage_config: StorageInit,
+	metrics_push_config: Option<MetricsPushConfig>,
+) -> Result<TaskManager, ServiceError> {
+	let task_manager = match config.network.network_backend {
+		sc_network::config::NetworkBackendType::Libp2p => {
+			new_full_base::<sc_network::NetworkWorker<_, _>>(
+				config,
+				epoch_config,
+				data_sources,
+				storage_monitor_params,
+				storage_config,
+				metrics_push_config,
+			)
+			.await?
+		},
+		sc_network::config::NetworkBackendType::Litep2p => {
+			new_full_base::<sc_network::Litep2pNetworkBackend>(
+				config,
+				epoch_config,
+				data_sources,
+				storage_monitor_params,
+				storage_config,
+				metrics_push_config,
+			)
+			.await?
+		},
+	};
+
+	Ok(task_manager)
+}
+
 /// Builds a new service for a full client.
-pub async fn new_full<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
+pub async fn new_full_base<Network: sc_network::NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	epoch_config: MainchainEpochConfig,
 	data_sources: DataSources,

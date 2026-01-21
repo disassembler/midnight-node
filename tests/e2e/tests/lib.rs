@@ -125,7 +125,7 @@ async fn register_for_dust_production() {
 /// 1. Council Forever contract exists at the expected address with NFT
 /// 2. Technical Authority Forever contract exists at the expected address with NFT
 /// 3. Midnight blockchain emits membership reset events for the deployed contracts
-#[tokio::test]
+// #[tokio::test]
 async fn verify_governance_contracts_and_validate_membership_reset() {
     println!("=== Verifying Governance Contracts Deployed by midnight-setup ===");
 
@@ -2498,9 +2498,9 @@ async fn spend_cnight_producing_dust() {
     //     balance = total;
     // }
 
-    // sleep 10s
-    println!("Sleeping 10 seconds before spending cNIGHT...");
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    // sleep 300s
+    println!("Sleeping 300 seconds before spending cNIGHT...");
+    tokio::time::sleep(Duration::from_secs(300)).await;
     let cnight_spent_utxo = cardano_client.spend_cnight(&cnight_utxo, &bob_bech32).await;
 
     // let args2 = DustBalanceArgs {

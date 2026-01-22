@@ -35,7 +35,7 @@ async fn global_faucet_manager() -> Arc<FaucetManager> {
 // -------- TESTS --------
 
 #[tokio::test]
-async fn register_for_dust_production() {
+async fn cnight_register_for_dust_production() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client).await;
@@ -125,7 +125,7 @@ async fn register_for_dust_production() {
 /// 1. Council Forever contract exists at the expected address with NFT
 /// 2. Technical Authority Forever contract exists at the expected address with NFT
 /// 3. Midnight blockchain emits membership reset events for the deployed contracts
-// #[tokio::test]
+#[tokio::test]
 async fn verify_governance_contracts_and_validate_membership_reset() {
     println!("=== Verifying Governance Contracts Deployed by midnight-setup ===");
 
@@ -283,7 +283,7 @@ async fn verify_federated_ops_contract_deployment() {
 }
 
 #[tokio::test]
-async fn register_2_cardano_same_dust_address_production() {
+async fn cnight_register_2_cardano_same_dust_address_production() {
     let settings = Settings::default();
     let cardano_client_1 =
         CardanoClient::new(settings.ogmios_client.clone(), settings.constants.clone()).await;
@@ -574,7 +574,7 @@ async fn cnight_produces_dust() {
 }
 
 #[tokio::test]
-async fn deregister_from_dust_production() {
+async fn cnight_deregister_from_dust_production() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client.clone()).await;
@@ -706,7 +706,7 @@ async fn deregister_from_dust_production() {
 }
 
 #[tokio::test]
-async fn alice_cannot_deregister_bob() {
+async fn cnight_alice_cannot_deregister_bob() {
     let settings = Settings::default();
 
     // Create Alice and Bob wallets
@@ -772,7 +772,7 @@ async fn alice_cannot_deregister_bob() {
 }
 
 #[tokio::test]
-async fn removing_excessive_registrations() {
+async fn cnight_removing_excessive_registrations() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client).await;
@@ -1020,8 +1020,8 @@ async fn removing_excessive_registrations() {
     // );
 }
 
-// #[tokio::test]
-async fn create_hundred_registrations() {
+#[tokio::test]
+async fn cnight_create_hundred_registrations() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client).await;
@@ -1359,7 +1359,7 @@ async fn valid_deploy_transaction_succeeds_via_rpc() {
     println!("✓ PR367-TC-0003-03 E2E PASSED: Valid transaction accepted and included in block");
 }
 #[tokio::test]
-async fn register_twice_with_same_cardano_address() {
+async fn cnight_register_twice_with_same_cardano_address() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client.clone()).await;
@@ -1526,7 +1526,7 @@ async fn register_twice_with_same_cardano_address() {
 }
 
 #[tokio::test]
-async fn deregister_with_valid_cnight_utxo() {
+async fn cnight_deregister_with_valid_cnight_utxo() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client.clone()).await;
@@ -1831,7 +1831,7 @@ async fn query_d_parameter_at_historical_block() {
     println!("via federated authority governance between block queries.");
 }
 #[tokio::test]
-async fn deregister_first_mapping() {
+async fn cnight_deregister_first_mapping() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client.clone()).await;
@@ -2093,7 +2093,7 @@ async fn deregister_first_mapping() {
 }
 
 #[tokio::test]
-async fn produce_dust_from_tokens_owned_before_registration() {
+async fn cnight_produce_dust_from_tokens_owned_before_registration() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client.clone()).await;
@@ -2231,7 +2231,7 @@ async fn produce_dust_from_tokens_owned_before_registration() {
 }
 
 #[tokio::test]
-async fn stop_dust_producing_after_deregistration_and_rotation() {
+async fn cnight_stop_dust_producing_after_deregistration_and_rotation() {
     // case for stop dust production (reg -> mint -> dereg -> rotate)
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
@@ -2394,7 +2394,7 @@ async fn stop_dust_producing_after_deregistration_and_rotation() {
 }
 
 #[tokio::test]
-async fn spend_cnight_producing_dust() {
+async fn cnight_spend_cnight_producing_dust() {
     let settings = Settings::default();
     let cardano_client =
         CardanoClient::new(settings.ogmios_client.clone(), settings.constants.clone()).await;

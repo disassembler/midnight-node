@@ -794,7 +794,7 @@ async fn cnight_removing_excessive_registrations() {
     );
 
     let faucet = global_faucet_manager().await;
-    let collateral_utxo = faucet.request_tokens(&address_bech32, 5_000_000).await;
+    let collateral_utxo = faucet.request_tokens(&address_bech32, 15_000_000).await;
     let tx_in = faucet.request_tokens(&address_bech32, 10_000_000).await;
     let second_tx_in = faucet.request_tokens(&address_bech32, 10_000_000).await;
     let tx_in_for_deregister = faucet.request_tokens(&address_bech32, 10_000_000).await;
@@ -1021,7 +1021,7 @@ async fn cnight_removing_excessive_registrations() {
 }
 
 #[tokio::test]
-async fn cnight_create_hundred_registrations() {
+async fn create_hundred_registrations() {
     let settings = Settings::default();
     let cardano_client = CardanoClient::new(settings.ogmios_client, settings.constants).await;
     let midnight_client = MidnightClient::new(settings.node_client).await;

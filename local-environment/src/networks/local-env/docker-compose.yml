@@ -34,6 +34,7 @@ services:
       - ./configurations/genesis/shelley/genesis-utxo.skey:/shared/shelley/genesis-utxo.skey
       - ./configurations/genesis/shelley/genesis-utxo.vkey:/shared/shelley/genesis-utxo.vkey
       - ./configurations/genesis/conway/genesis.conway.json:/shared/conway/genesis.conway.json.base
+      - ./configurations/genesis/intra/dijkstra-genesis.json:/shared/intra/dijkstra-genesis.json
       - ./runtime-values:/runtime-values
     environment:
       - CARDANO_NODE_SOCKET_PATH=/data/node.socket

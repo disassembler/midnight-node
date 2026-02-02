@@ -186,7 +186,7 @@ echo "Genesis address: $genesis_address"
 # Retry loop for genesis UTXO query (node needs time to process genesis)
 for i in {1..30}; do
   echo "Querying genesis UTXO (attempt $i/30)..."
-  cardano-cli latest query utxo --testnet-magic 42 --address "${genesis_address}" > /tmp/genesis_utxo.txt
+  cardano-cli latest query utxo --output-text --testnet-magic 42 --address "${genesis_address}" > /tmp/genesis_utxo.txt
   
   # Check if we got any UTXOs (more than just header lines)
   utxo_count=$(cat /tmp/genesis_utxo.txt | /busybox awk 'NR>2 { count++ } END { print count+0 }')

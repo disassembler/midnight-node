@@ -301,7 +301,7 @@ impl CardanoClient {
             .mint_redeemer_value(&WRedeemer {
                 data: WData::JSON(constr0(serde_json::json!([])).to_string()),
                 ex_units: Budget {
-                    mem: 14000000,
+                    mem: 10000000,
                     steps: 10000000000,
                 },
             })
@@ -509,7 +509,7 @@ impl CardanoClient {
             .mint_redeemer_value(&WRedeemer {
                 data: WData::JSON(constr0(serde_json::json!([])).to_string()),
                 ex_units: Budget {
-                    mem: 14000000,
+                    mem: 10000000,
                     steps: 10000000000,
                 },
             })
@@ -911,9 +911,9 @@ impl CardanoClient {
             .mint_redeemer_value(&WRedeemer {
                 data: WData::JSON(redeemer.to_string()),
                 // Using generous ex_units to rule out budget issues
-                // Max values from protocol params: mem: 14000000, steps: 10000000000
+                // Max values from protocol params: mem: 10000000, steps: 10000000000
                 ex_units: Budget {
-                    mem: 14000000,
+                    mem: 10000000,
                     steps: 10000000000,
                 },
             })
@@ -1046,7 +1046,7 @@ impl CardanoClient {
             .mint_redeemer_value(&WRedeemer {
                 data: WData::JSON(redeemer.to_string()),
                 ex_units: Budget {
-                    mem: 14000000,
+                    mem: 10000000,
                     steps: 10000000000,
                 },
             })

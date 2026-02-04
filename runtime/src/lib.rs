@@ -1027,7 +1027,7 @@ where
 	type Extension = TxExtension;
 
 	fn create_transaction(call: RuntimeCall, extension: TxExtension) -> UncheckedExtrinsic {
-		generic::UncheckedExtrinsic::new_transaction(call, extension).into()
+		generic::UncheckedExtrinsic::new_transaction(call, extension)
 	}
 }
 
@@ -1036,7 +1036,7 @@ where
 	RuntimeCall: From<LocalCall>,
 {
 	fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
-		generic::UncheckedExtrinsic::new_bare(call).into()
+		generic::UncheckedExtrinsic::new_bare(call)
 	}
 }
 
@@ -1115,8 +1115,7 @@ where
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = <Runtime as frame_system::Config>::Lookup::unlookup(account);
 		let (call, tx_ext, _) = raw_payload.deconstruct();
-		let transaction =
-			generic::UncheckedExtrinsic::new_signed(call, address, signature, tx_ext).into();
+		let transaction = generic::UncheckedExtrinsic::new_signed(call, address, signature, tx_ext);
 		Some(transaction)
 	}
 }

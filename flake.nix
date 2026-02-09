@@ -59,10 +59,11 @@
         pnpm
         kubectl
         just
+        docker-compose
+        cosign
+        jq
+        yq-go
       ];
-
-      # Filter out rustToolchain from general list (shown separately)
-      nonRustPackages = builtins.filter (pkg: pkg != rustToolchain) devshellPackages;
       
       versionInfo = pkgs.lib.concatStringsSep "\\n" (
         builtins.filter (x: x != "") (
@@ -80,7 +81,7 @@
               then "  ${name}: ${version}${descStr}"
               else ""
           )
-          nonRustPackages
+          devshellPackages
         )
       );
 
@@ -104,18 +105,17 @@
         echo "  rust-analyzer: $(rust-analyzer --version 2>/dev/null | cut -d' ' -f2)"
         echo "  targets: ${rustTargetsInfo}"
         echo ""
-        echo "📦 npm devDependencies (${localEnvPackageJson.name} ${localEnvPackageJson.version}):"
-        echo -e "${devDepsInfo}"
       '';
-    in {
-      packages.default = devshellPackages;
-      devShells.default = pkgs.mkShell {
-        packages = devshellPackages ++ [devshellInfoScript];
-        buildInputs = with pkgs; [
-          pkg-config
-          zlib
-          libclang
-        ];
+
+      # Common build inputs for Rust compilation
+      commonBuildInputs = with pkgs; [
+        pkg-config
+        zlib
+        libclang
+      ];
+
+      # Common environment variables for Rust compilation
+      commonEnvVars = {
         WASM_BUILD_STD = "0";
         LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         PROTOC = "${pkgs.protobuf}/bin/protoc";
@@ -125,10 +125,36 @@
         OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
         OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
         ROCKSDB_LIB_DIR = "${pkgs.rocksdb}/lib";
-        shellHook = ''
-          export PATH="${localEnvPkgs}/lib/node_modules/.bin:$PATH"
-          devshell-info
-        '';
+      };
+
+      localEnvInfoScript = pkgs.writeShellScriptBin "local-env-info" ''
+        echo ""
+        echo "🐳 Local Environment Tools:"
+        echo "📦 npm devDependencies (${localEnvPackageJson.name} ${localEnvPackageJson.version}):"
+        echo -e "${devDepsInfo}"
+      '';
+    in {
+      devShells = {
+        default = pkgs.mkShell (commonEnvVars // {
+          packages = devshellPackages ++ [rustToolchain devshellInfoScript];
+          buildInputs = commonBuildInputs;
+          shellHook = ''
+            devshell-info
+          '';
+        });
+
+        # Local environment devshell, npm based deps
+        local-environment = pkgs.mkShell (commonEnvVars // {
+          packages = devshellPackages ++ [rustToolchain devshellInfoScript localEnvInfoScript];
+          buildInputs = commonBuildInputs;
+          DOCKER_BUILDKIT = "1";
+          COMPOSE_DOCKER_CLI_BUILD = "1";
+          shellHook = ''
+            export PATH="${localEnvPkgs}/lib/node_modules/.bin:$PATH"
+            devshell-info
+            local-env-info
+          '';
+        });
       };
     });
 }

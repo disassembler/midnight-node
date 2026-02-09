@@ -11,7 +11,7 @@
 .local
 
 # direnv files
-.direnv
+.direnv*
 .envrc.local
 
 .devcontainer/

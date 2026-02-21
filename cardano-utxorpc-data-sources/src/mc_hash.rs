@@ -30,15 +30,22 @@ impl McHashDataSource for UtxoRpcMcHashDataSource {
 
         let tip = response.into_inner();
 
-        // Calculate stable slot
+        // Calculate stable slot (current tip - security parameter)
         let stable_slot = tip.slot.saturating_sub(self.client.config.security_parameter);
 
+        // Calculate approximate timestamp for stable slot
+        // Each slot is 1 second, so subtract (tip.slot - stable_slot) seconds from tip timestamp
+        let slot_diff = tip.slot.saturating_sub(stable_slot);
+        let stable_timestamp = tip.timestamp.saturating_sub(slot_diff * 1000); // milliseconds
+
+        // Note: This uses the tip's hash which is not the actual stable block hash
+        // This is a limitation since we can only query by hash, not by slot
         Ok(Some(MainchainBlock {
             hash: bytes_to_mc_block_hash(&tip.hash)?,
             number: McBlockNumber(stable_slot as u32),
             slot: McSlotNumber(stable_slot),
             epoch: McEpochNumber((stable_slot / self.client.config.security_parameter) as u32),
-            timestamp: 0, // TODO: Calculate actual timestamp
+            timestamp: stable_timestamp,
         }))
     }
 
@@ -47,13 +54,30 @@ impl McHashDataSource for UtxoRpcMcHashDataSource {
         block_hash: McBlockHash,
         _timestamp: Timestamp,
     ) -> Result<Option<MainchainBlock>, Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Query specific block by hash
-        // For now, return None as we don't have block-by-hash query
-        log::warn!(
-            "get_stable_block_for({:?}) not fully implemented, returning None",
-            block_hash
-        );
-        Ok(None)
+        // Query the block by hash
+        let block = match self.get_block_by_hash(block_hash).await? {
+            Some(b) => b,
+            None => return Ok(None),
+        };
+
+        // Get current chain tip to verify the block is stable
+        let mut client = self.client.query_client.clone();
+        let response = client
+            .get_chain_tip(GetChainTipRequest {})
+            .await
+            .map_err(DataSourceError::from)?;
+
+        let tip = response.into_inner();
+
+        // Check if block is stable (beyond security parameter from tip)
+        let stable_slot = tip.slot.saturating_sub(self.client.config.security_parameter);
+
+        if block.slot.0 <= stable_slot {
+            Ok(Some(block))
+        } else {
+            // Block is not yet stable
+            Ok(None)
+        }
     }
 
     async fn get_block_by_hash(

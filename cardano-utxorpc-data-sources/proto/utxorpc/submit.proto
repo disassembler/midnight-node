@@ -1,0 +1,49 @@
+// UTxORPC Submit Service
+// Transaction submission and monitoring
+
+syntax = "proto3";
+
+package utxorpc.submit.v1;
+
+service SubmitService {
+  // Submit a transaction
+  rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse);
+  
+  // Wait for transaction confirmation
+  rpc WaitForTx(WaitForTxRequest) returns (WaitForTxResponse);
+  
+  // Read mempool state
+  rpc ReadMempool(ReadMempoolRequest) returns (stream ReadMempoolResponse);
+}
+
+message SubmitTxRequest {
+  bytes tx = 1;  // CBOR-encoded transaction
+}
+
+message SubmitTxResponse {
+  bytes tx_hash = 1;
+  bool accepted = 2;
+  string error = 3;
+}
+
+message WaitForTxRequest {
+  bytes tx_hash = 1;
+  uint32 timeout_seconds = 2;
+}
+
+message WaitForTxResponse {
+  bytes tx_hash = 1;
+  uint64 block_height = 2;
+  uint64 block_slot = 3;
+  bool confirmed = 4;
+}
+
+message ReadMempoolRequest {
+  // Empty - read all mempool
+}
+
+message ReadMempoolResponse {
+  bytes tx_hash = 1;
+  uint64 fee = 2;
+  uint64 size = 3;
+}

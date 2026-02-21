@@ -1,0 +1,61 @@
+[package]
+name = "cardano-utxorpc-data-sources"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+# gRPC client
+tonic = "0.12"
+prost = "0.13"
+prost-types = "0.13"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+async-trait = "0.1"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+
+# Cardano libraries
+# Use workspace version to avoid wasm-bindgen conflicts
+cardano-serialization-lib = { workspace = true }
+pallas-addresses = "0.34.0"
+pallas-codec = "0.34.0"
+pallas-primitives = "0.34.0"
+
+# Logging
+log = "0.4"
+
+# Utilities
+derive-new = "0.7"
+
+# Midnight primitives (enable std feature)
+midnight-primitives-cnight-observation = { workspace = true, features = ["std"] }
+midnight-primitives-federated-authority-observation = { workspace = true, features = ["std"] }
+midnight-primitives-mainchain-follower = { workspace = true, features = ["std"] }
+midnight-primitives = { workspace = true, features = ["std"] }
+
+# Partner chains dependencies (from workspace)
+# Note: Some crates don't have std feature, use default-features = true instead
+sidechain-domain = { workspace = true, default-features = true, features = ["serde"] }
+authority-selection-inherents = { workspace = true, default-features = true }
+sidechain-mc-hash = { workspace = true, default-features = true }
+pallet-sidechain-rpc = { workspace = true, default-features = true }
+sp-governed-map = { workspace = true, default-features = true }
+sp-partner-chains-bridge = { workspace = true, default-features = true }
+sp-timestamp = { workspace = true, default-features = true }
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[features]
+default = ["std"]
+std = []

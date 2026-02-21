@@ -1,0 +1,47 @@
+// UTxORPC Watch Service
+// Streaming updates for real-time monitoring
+
+syntax = "proto3";
+
+package utxorpc.watch.v1;
+
+service WatchService {
+  // Watch for transactions affecting specific addresses
+  rpc WatchTx(WatchTxRequest) returns (stream WatchTxResponse);
+  
+  // Follow the chain tip
+  rpc FollowTip(FollowTipRequest) returns (stream FollowTipResponse);
+  
+  // Watch mempool
+  rpc WatchMempool(WatchMempoolRequest) returns (stream WatchMempoolResponse);
+}
+
+message WatchTxRequest {
+  repeated bytes addresses = 1;
+}
+
+message WatchTxResponse {
+  bytes tx_hash = 1;
+  uint64 block_height = 2;
+  // Removed: outputs field that referenced query.v1.Utxo
+}
+
+message FollowTipRequest {
+  // Empty - follow from current tip
+}
+
+message FollowTipResponse {
+  uint64 height = 1;
+  uint64 slot = 2;
+  bytes hash = 3;
+  repeated bytes tx_hashes = 4;
+}
+
+message WatchMempoolRequest {
+  repeated bytes addresses = 1;
+}
+
+message WatchMempoolResponse {
+  bytes tx_hash = 1;
+  // Removed: outputs field that referenced query.v1.Utxo
+}

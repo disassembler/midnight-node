@@ -1,0 +1,127 @@
+// UTxORPC Query Service
+// Simplified version based on UTxORPC spec
+
+syntax = "proto3";
+
+package utxorpc.query.v1;
+
+service QueryService {
+  // Get UTxOs by address
+  rpc ReadUtxos(ReadUtxosRequest) returns (ReadUtxosResponse);
+
+  // Search UTxOs by pattern
+  rpc SearchUtxos(SearchUtxosRequest) returns (SearchUtxosResponse);
+
+  // Get chain parameters
+  rpc ReadParams(ReadParamsRequest) returns (ReadParamsResponse);
+
+  // Get chain tip
+  rpc GetChainTip(GetChainTipRequest) returns (GetChainTipResponse);
+
+  // Get transaction history for an address
+  rpc GetTxHistory(GetTxHistoryRequest) returns (GetTxHistoryResponse);
+
+  // Get UTxO creation and spending events in a block range
+  rpc ReadUtxoEvents(ReadUtxoEventsRequest) returns (ReadUtxoEventsResponse);
+}
+
+message ReadUtxosRequest {
+  repeated bytes addresses = 1;  // Cardano addresses (raw bytes)
+}
+
+message ReadUtxosResponse {
+  repeated Utxo items = 1;
+  bytes ledger_tip = 2;  // Current chain tip
+}
+
+message SearchUtxosRequest {
+  string pattern = 1;  // Search pattern (e.g., address prefix)
+}
+
+message SearchUtxosResponse {
+  repeated Utxo items = 1;
+}
+
+message ReadParamsRequest {
+  // Empty for now
+}
+
+message ReadParamsResponse {
+  uint64 slot = 1;
+  bytes hash = 2;
+  // Add protocol parameters as needed
+}
+
+message GetChainTipRequest {
+  // Empty
+}
+
+message GetChainTipResponse {
+  uint64 height = 1;
+  uint64 slot = 2;
+  bytes hash = 3;
+}
+
+message Utxo {
+  bytes tx_hash = 1;
+  uint32 output_index = 2;
+  bytes address = 3;
+  uint64 amount = 4;  // Lovelace
+  repeated Asset assets = 5;
+  bytes datum_hash = 6;
+  bytes datum = 7;
+
+  // Creation metadata (for tracking when/where UTxO was created)
+  uint64 created_at_slot = 8;
+  bytes created_at_block_hash = 9;
+  uint32 created_at_tx_index = 10;
+  uint64 created_at_block_timestamp = 11;  // Unix milliseconds
+}
+
+message Asset {
+  bytes policy_id = 1;
+  bytes asset_name = 2;
+  uint64 amount = 3;
+}
+
+message GetTxHistoryRequest {
+  bytes address = 1;  // Address to query
+  uint32 max_txs = 2;  // Maximum number of transactions to return (0 = all)
+}
+
+message GetTxHistoryResponse {
+  repeated bytes tx_hashes = 1;  // Transaction hashes
+}
+
+// Query UTxO events in a block range
+message ReadUtxoEventsRequest {
+  uint64 start_slot = 1;  // Start slot (inclusive)
+  uint64 end_slot = 2;    // End slot (inclusive)
+  repeated bytes addresses = 3;  // Optional: filter by addresses
+  uint32 max_events = 4;  // Maximum number of events to return (0 = all)
+}
+
+message ReadUtxoEventsResponse {
+  repeated UtxoEvent events = 1;
+}
+
+message UtxoEvent {
+  enum EventType {
+    CREATED = 0;  // UTxO was created
+    SPENT = 1;    // UTxO was spent
+  }
+
+  EventType event_type = 1;
+  bytes tx_hash = 2;  // Transaction hash that created or spent the UTxO
+  uint32 output_index = 3;  // Output index (for UTxO identification)
+  uint64 slot = 4;
+  bytes block_hash = 5;
+  uint32 tx_index = 6;
+  uint64 block_timestamp = 7;  // Unix milliseconds
+
+  // UTxO data (only present for CREATED events)
+  Utxo utxo = 8;
+
+  // Spending transaction hash (only present for SPENT events)
+  bytes spent_by_tx_hash = 9;
+}

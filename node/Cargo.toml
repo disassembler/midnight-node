@@ -106,8 +106,9 @@ authority-selection-inherents.workspace = true
 #sp-block-rewards = { workspace = true, optional = true }
 sp-sidechain.workspace = true
 sp-session-validator-management.workspace = true
-partner-chains-db-sync-data-sources = { workspace = true, features = ["block-source", "candidate-source", "mc-hash", "sidechain-rpc", "bridge"] }
-partner-chains-mock-data-sources = { workspace = true, features = ["block-source", "candidate-source", "mc-hash", "sidechain-rpc", "bridge"] }
+partner-chains-db-sync-data-sources = { workspace = true, features = ["block-source", "candidate-source", "mc-hash", "sidechain-rpc", "governed-map", "bridge"] }
+partner-chains-mock-data-sources = { workspace = true, features = ["block-source", "candidate-source", "mc-hash", "sidechain-rpc", "governed-map", "bridge"] }
+cardano-utxorpc-data-sources = { path = "../cardano-utxorpc-data-sources", optional = true }
 pallet-session-validator-management-rpc.workspace = true
 pallet-sidechain-rpc.workspace = true
 sidechain-slots.workspace = true
@@ -164,3 +165,5 @@ try-runtime = ["midnight-node-runtime/try-runtime"]
 experimental = [
     #"sp-block-rewards",
 ]
+# Enable UTxO RPC data sources (alternative to PostgreSQL + db-sync)
+utxorpc = ["cardano-utxorpc-data-sources"]

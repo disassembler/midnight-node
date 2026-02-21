@@ -23,6 +23,9 @@ service QueryService {
 
   // Get UTxO creation and spending events in a block range
   rpc ReadUtxoEvents(ReadUtxoEventsRequest) returns (ReadUtxoEventsResponse);
+
+  // Get a block by its hash
+  rpc GetBlockByHash(GetBlockByHashRequest) returns (GetBlockByHashResponse);
 }
 
 message ReadUtxosRequest {
@@ -125,4 +128,17 @@ message UtxoEvent {
 
   // Spending transaction hash (only present for SPENT events)
   bytes spent_by_tx_hash = 9;
+}
+
+// Get block by hash request
+message GetBlockByHashRequest {
+  bytes hash = 1;  // Block hash (32 bytes)
+}
+
+// Get block by hash response
+message GetBlockByHashResponse {
+  bytes block_cbor = 1;  // Full block CBOR data
+  uint64 slot = 2;
+  bytes hash = 3;
+  uint64 timestamp = 4;  // Unix milliseconds
 }

@@ -18,6 +18,7 @@
       || lib.hasSuffix ".scale" path
       || lib.hasSuffix ".mn" path
       || lib.hasSuffix ".json" path
+      || lib.hasSuffix ".proto" path
       || lib.hasSuffix "COMPACTC_VERSION" path;
     name = "source";
   };

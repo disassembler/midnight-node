@@ -39,6 +39,14 @@ use midnight_primitives_mainchain_follower::{
 	MidnightCNightObservationDataSource, MidnightCNightObservationDataSourceImpl,
 };
 
+#[cfg(feature = "utxorpc")]
+use cardano_utxorpc_data_sources::{
+	NoOpAuthoritySelectionDataSource, UtxoRpcCNightObservationDataSource,
+	UtxoRpcClient, UtxoRpcConfig, UtxoRpcFederatedAuthorityDataSource,
+	UtxoRpcGovernedMapDataSource, UtxoRpcMcHashDataSource,
+	UtxoRpcSidechainRpcDataSource, UtxoRpcTokenBridgeDataSource,
+};
+
 // TODO: Decide if it should be experimental
 // #[cfg(feature = "experimental")]
 
@@ -63,6 +71,17 @@ pub(crate) async fn create_cached_main_chain_follower_data_sources(
 	cfg: MidnightCfg,
 	metrics_opt: Option<McFollowerMetrics>,
 ) -> std::result::Result<DataSources, ServiceError> {
+	// Check for UTxO RPC mode (via environment variable)
+	#[cfg(feature = "utxorpc")]
+	if std::env::var("USE_UTXORPC").unwrap_or_default() == "true" {
+		log::info!("Using UTxO RPC data sources (USE_UTXORPC=true)");
+		return create_utxorpc_data_sources(cfg).await.map_err(|err| {
+			ServiceError::Application(
+				format!("Failed to create UTxO RPC data sources: {err}").into(),
+			)
+		});
+	}
+
 	if cfg.use_main_chain_follower_mock {
 		let mock = create_mock_data_sources(cfg.clone()).await.map_err(|err| {
 			ServiceError::Application(
@@ -101,6 +120,47 @@ pub async fn create_mock_data_sources(
 			FederatedAuthorityObservationDataSourceMock::new(),
 		),
 		bridge: Arc::new(TokenBridgeDataSourceMock::<BridgeRecipient>::new()),
+	})
+}
+
+#[cfg(feature = "utxorpc")]
+pub async fn create_utxorpc_data_sources(
+	cfg: MidnightCfg,
+) -> std::result::Result<DataSources, Box<dyn Error + Send + Sync + 'static>> {
+	// Get UTxO RPC endpoint from config or environment variable
+	let endpoint = std::env::var("UTXORPC_ENDPOINT")
+		.unwrap_or_else(|_| "http://localhost:50051".to_string());
+
+	log::info!("Connecting to UTxO RPC endpoint: {}", endpoint);
+
+	// Create UTxO RPC config
+	let utxo_rpc_config = UtxoRpcConfig {
+		endpoint,
+		security_parameter: cfg.cardano_security_parameter,
+		network_magic: cfg.cardano_network_magic,
+	};
+
+	// Create shared client
+	let client = UtxoRpcClient::new(utxo_rpc_config)
+		.await
+		.map_err(|e| format!("Failed to connect to UTxO RPC: {}", e))?;
+
+	log::info!("Successfully connected to UTxO RPC server");
+
+	Ok(DataSources {
+		mc_hash: Arc::new(UtxoRpcMcHashDataSource::new(client.clone())),
+		// For federated networks, use NoOp authority selection (no SPO registrations)
+		authority_selection: Arc::new(NoOpAuthoritySelectionDataSource),
+		cnight_observation: Arc::new(UtxoRpcCNightObservationDataSource::new(client.clone())),
+		sidechain_rpc: Arc::new(UtxoRpcSidechainRpcDataSource::new(client.clone())),
+		governed_map: Arc::new(UtxoRpcGovernedMapDataSource::new(client.clone())),
+		federated_authority_observation: Arc::new(UtxoRpcFederatedAuthorityDataSource::new(
+			client.clone(),
+		)),
+		bridge: Arc::new(UtxoRpcTokenBridgeDataSource::<BridgeRecipient>::new(
+			client,
+			std::marker::PhantomData,
+		)),
 	})
 }
 

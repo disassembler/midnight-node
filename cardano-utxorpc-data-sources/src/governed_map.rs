@@ -52,23 +52,25 @@ impl UtxoRpcGovernedMapDataSource {
     /// Reconstructs governed map state at a specific block by querying events
     async fn query_governed_map_at_block(
         &self,
-        _block_hash: &McBlockHash,
+        block_hash: &McBlockHash,
         scripts: &MainChainScriptsV1,
     ) -> Result<BTreeMap<String, ByteString>, Box<dyn std::error::Error + Send + Sync>> {
-        use crate::proto::query::{GetChainTipRequest, ReadUtxoEventsRequest};
+        use crate::proto::query::{GetBlockByHashRequest, ReadUtxoEventsRequest};
         use std::collections::HashMap;
 
         let mut client = self.client.query_client.clone();
 
-        // Get the slot for this block hash
-        // Note: We need to map block hash to slot. For now, we'll query up to the current tip.
-        // TODO: Add a GetBlockByHash RPC to Hayate to get the slot for a specific block hash
-        let tip_response = client
-            .get_chain_tip(GetChainTipRequest {})
+        // Get the slot for this block hash using GetBlockByHash
+        let block_request = GetBlockByHashRequest {
+            hash: block_hash.0.to_vec(),
+        };
+
+        let block_response = client
+            .get_block_by_hash(block_request)
             .await
             .map_err(DataSourceError::from)?;
-        let tip = tip_response.into_inner();
-        let end_slot = tip.slot;
+        let block_info = block_response.into_inner();
+        let end_slot = block_info.slot;
 
         // Decode validator address to bytes
         use pallas_addresses::Address as PallasAddress;

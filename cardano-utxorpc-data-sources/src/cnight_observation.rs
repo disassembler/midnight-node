@@ -45,8 +45,8 @@ impl MidnightCNightObservationDataSource for UtxoRpcCNightObservationDataSource 
         let end = CardanoPosition {
             block_hash: bytes_to_mc_block_hash(&tip.hash)?,
             block_number: tip.slot as u32,
-            block_timestamp: TimestampUnixMillis(0), // TODO: Get actual timestamp
-            tx_index_in_block: 0, // TODO: Get actual tx index
+            block_timestamp: TimestampUnixMillis(tip.timestamp as i64),
+            tx_index_in_block: u32::MAX, // End of block marker
         };
 
         // Extract network ID from mapping validator address
@@ -358,10 +358,6 @@ impl UtxoRpcCNightObservationDataSource {
         let result = response.into_inner();
 
         let mut observed_utxos = Vec::new();
-
-        // Get current tip for position tracking
-        // TODO: Improve position tracking with actual tx indices and timestamps from Hayate
-        let _tip = client.get_chain_tip(GetChainTipRequest {}).await?.into_inner();
 
         for utxo in result.items {
             // Check if this UTxO contains the auth token

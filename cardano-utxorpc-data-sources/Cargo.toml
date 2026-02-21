@@ -3,6 +3,12 @@ name = "cardano-utxorpc-data-sources"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+include = [
+    "src/**/*",
+    "proto/**/*.proto",
+    "build.rs",
+    "Cargo.toml",
+]
 
 [dependencies]
 # gRPC client

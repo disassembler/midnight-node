@@ -60,12 +60,31 @@ impl McHashDataSource for UtxoRpcMcHashDataSource {
         &self,
         block_hash: McBlockHash,
     ) -> Result<Option<MainchainBlock>, Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Implement block-by-hash query
-        // This requires additional UTxO RPC functionality
-        log::warn!(
-            "get_block_by_hash({:?}) not fully implemented, returning None",
-            block_hash
-        );
-        Ok(None)
+        let mut client = self.client.query_client.clone();
+
+        let request = GetBlockByHashRequest {
+            hash: block_hash.0.to_vec(),
+        };
+
+        let response = match client.get_block_by_hash(request).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                // If block not found, return None
+                if e.code() == tonic::Code::NotFound {
+                    return Ok(None);
+                }
+                return Err(Box::new(DataSourceError::from(e)));
+            }
+        };
+
+        let block_info = response.into_inner();
+
+        Ok(Some(MainchainBlock {
+            hash: block_hash,
+            number: McBlockNumber(block_info.slot as u32),
+            slot: McSlotNumber(block_info.slot),
+            epoch: McEpochNumber((block_info.slot / self.client.config.security_parameter) as u32),
+            timestamp: block_info.timestamp,
+        }))
     }
 }

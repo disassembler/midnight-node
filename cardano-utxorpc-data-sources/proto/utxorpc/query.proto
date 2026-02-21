@@ -60,6 +60,7 @@ message GetChainTipResponse {
   uint64 height = 1;
   uint64 slot = 2;
   bytes hash = 3;
+  uint64 timestamp = 4;  // Unix milliseconds
 }
 
 message Utxo {

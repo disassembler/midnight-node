@@ -32,7 +32,7 @@ impl SidechainRpcDataSource for UtxoRpcSidechainRpcDataSource {
             hash: bytes_to_mc_block_hash(&tip.hash)?,
             epoch: McEpochNumber((tip.slot / self.client.config.security_parameter) as u32),
             slot: McSlotNumber(tip.slot),
-            timestamp: 0, // TODO: Get actual timestamp if available
+            timestamp: tip.timestamp,
         })
     }
 }

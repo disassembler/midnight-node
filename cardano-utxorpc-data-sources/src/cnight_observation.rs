@@ -9,7 +9,7 @@ use derive_new::new;
 use midnight_primitives_cnight_observation::{
     CNightAddresses, CardanoPosition, CardanoRewardAddressBytes, CreateData, DeregistrationData,
     DustPublicKeyBytes, ObservedUtxo, ObservedUtxoData, ObservedUtxoHeader, ObservedUtxos,
-    RedemptionCreateData, RedemptionSpendData, RegistrationData, SpendData, UtxoIndexInTx,
+    RegistrationData, SpendData, UtxoIndexInTx,
     CARDANO_REWARD_ADDRESS_LENGTH,
 };
 use midnight_primitives_mainchain_follower::MidnightCNightObservationDataSource;
@@ -734,7 +734,7 @@ impl UtxoRpcCNightObservationDataSource {
         use crate::proto::query::ReadUtxoEventsRequest;
 
         // Decode redemption validator address to bytes for filtering
-        let address_bytes = self.decode_bech32_address(&config.redemption_validator_address)?;
+        let address_bytes = self.decode_bech32_address(&config.mapping_validator_address)?;
 
         // Query CREATE events at the redemption validator address
         let request = ReadUtxoEventsRequest {
@@ -809,7 +809,7 @@ impl UtxoRpcCNightObservationDataSource {
 
             observed_utxos.push(ObservedUtxo {
                 header,
-                data: ObservedUtxoData::RedemptionCreate(RedemptionCreateData {
+                data: ObservedUtxoData::AssetCreate(CreateData {
                     owner,
                     value: cnight_amount as u128,
                     utxo_tx_hash: bytes_to_mc_tx_hash(&event.tx_hash)?,
@@ -835,7 +835,7 @@ impl UtxoRpcCNightObservationDataSource {
         use std::collections::HashMap;
 
         // Decode redemption validator address to bytes for filtering
-        let address_bytes = self.decode_bech32_address(&config.redemption_validator_address)?;
+        let address_bytes = self.decode_bech32_address(&config.mapping_validator_address)?;
 
         // Query both CREATE and SPEND events for the redemption validator address
         let request = ReadUtxoEventsRequest {
@@ -921,7 +921,7 @@ impl UtxoRpcCNightObservationDataSource {
 
                     observed_utxos.push(ObservedUtxo {
                         header,
-                        data: ObservedUtxoData::RedemptionSpend(RedemptionSpendData {
+                        data: ObservedUtxoData::AssetSpend(SpendData {
                             owner,
                             value: cnight_amount as u128,
                             utxo_tx_hash: bytes_to_mc_tx_hash(&event.tx_hash)?,

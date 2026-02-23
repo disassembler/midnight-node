@@ -64,6 +64,18 @@ pub struct MidnightCfg {
 	#[serde(rename = "mc__slot_duration_millis")]
 	pub mc_slot_duration_millis: u64,
 
+	/// Use UTxORPC/Hayate for Cardano data instead of db-sync
+	pub use_utxorpc: bool,
+
+	/// UTxORPC gRPC endpoint (e.g., "http://localhost:50051")
+	/// Required if use_utxorpc is true
+	pub utxorpc_endpoint: Option<String>,
+
+	/// Cardano network magic number for UTxORPC
+	/// - SanchoNet: 4
+	/// - Mainnet: 764824073
+	pub utxorpc_network_magic: Option<u64>,
+
 	/// see partner-chains ConnectionConfig
 	#[doc_tag(secret)]
 	pub db_sync_postgres_connection_string: Option<String>,
@@ -116,7 +128,23 @@ fn main_chain_follower_vars(cfg: &MidnightCfg) -> Result<(), validation::Error> 
 					.to_string(),
 			));
 		}
+	} else if cfg.use_utxorpc {
+		// UTxORPC mode - validate UTxORPC-specific parameters
+		if cfg.utxorpc_endpoint.is_none() {
+			return Err(validation::Error::Custom(
+				"utxorpc_endpoint must be defined if use_utxorpc is true".to_string(),
+			));
+		}
+		if cfg.cardano_security_parameter.is_none() {
+			return Err(missing("cardano_security_parameter"));
+		}
+		if cfg.utxorpc_network_magic.is_none() {
+			return Err(validation::Error::Custom(
+				"utxorpc_network_magic must be defined if use_utxorpc is true".to_string(),
+			));
+		}
 	} else {
+		// db-sync mode - validate db-sync-specific parameters
 		if cfg.db_sync_postgres_connection_string.is_none() {
 			return Err(missing("db_sync_postgres_connection_string"));
 		}

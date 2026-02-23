@@ -120,6 +120,7 @@ sp-session-validator-management-query.workspace = true
 partner-chains-node-commands.workspace = true
 partner-chains-cli.workspace = true
 sp-partner-chains-bridge = { workspace = true, default-features = true }
+sp-governed-map = { workspace = true, default-features = true }
 
 sc-storage-monitor.workspace = true
 prometheus-endpoint.workspace = true

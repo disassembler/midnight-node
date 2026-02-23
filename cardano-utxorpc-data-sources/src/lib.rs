@@ -101,13 +101,22 @@ pub struct UtxoRpcClient {
 impl UtxoRpcClient {
     /// Create a new UTxO RPC client
     pub async fn new(config: UtxoRpcConfig) -> Result<Self, tonic::transport::Error> {
+        // Increase message size limits to handle large native token datasets
+        // Default is 4MB, but CNight token data can exceed 8MB
+        // Set to 128MB to match server-side limits with ample headroom
+        const MAX_MESSAGE_SIZE: usize = 128 * 1024 * 1024; // 128MB
+
         let query_client = proto::query::query_service_client::QueryServiceClient::connect(
             config.endpoint.clone()
-        ).await?;
+        ).await?
+        .max_decoding_message_size(MAX_MESSAGE_SIZE)
+        .max_encoding_message_size(MAX_MESSAGE_SIZE);
 
         let watch_client = proto::watch::watch_service_client::WatchServiceClient::connect(
             config.endpoint.clone()
-        ).await?;
+        ).await?
+        .max_decoding_message_size(MAX_MESSAGE_SIZE)
+        .max_encoding_message_size(MAX_MESSAGE_SIZE);
 
         Ok(Self {
             query_client,

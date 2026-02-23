@@ -75,6 +75,7 @@
     // {
       inherit cargoArtifacts;
       doCheck = false; # we run tests elsewhere
+      cargoExtraArgs = "--features utxorpc";
     });
 in
   package

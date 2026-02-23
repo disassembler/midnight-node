@@ -24,6 +24,7 @@ use partner_chains_mock_data_sources::{
 };
 use sc_service::error::Error as ServiceError;
 use sidechain_mc_hash::McHashDataSource;
+use sp_governed_map::GovernedMapDataSource;
 use sp_partner_chains_bridge::TokenBridgeDataSource;
 use sqlx::{Pool, Postgres};
 
@@ -56,6 +57,7 @@ pub struct DataSources {
 	pub authority_selection: Arc<dyn AuthoritySelectionDataSource + Send + Sync>,
 	pub cnight_observation: Arc<dyn MidnightCNightObservationDataSource + Send + Sync>,
 	pub sidechain_rpc: Arc<dyn SidechainRpcDataSource + Send + Sync>,
+	pub governed_map: Arc<dyn GovernedMapDataSource + Send + Sync>,
 	pub federated_authority_observation:
 		Arc<dyn FederatedAuthorityObservationDataSource + Send + Sync>,
 	pub bridge: Arc<dyn TokenBridgeDataSource<BridgeRecipient> + Send + Sync>,
@@ -71,10 +73,10 @@ pub(crate) async fn create_cached_main_chain_follower_data_sources(
 	cfg: MidnightCfg,
 	metrics_opt: Option<McFollowerMetrics>,
 ) -> std::result::Result<DataSources, ServiceError> {
-	// Check for UTxO RPC mode (via environment variable)
+	// Check for UTxO RPC mode (via config or environment variable)
 	#[cfg(feature = "utxorpc")]
-	if std::env::var("USE_UTXORPC").unwrap_or_default() == "true" {
-		log::info!("Using UTxO RPC data sources (USE_UTXORPC=true)");
+	if cfg.use_utxorpc || std::env::var("USE_UTXORPC").unwrap_or_default() == "true" {
+		log::info!("Using UTxO RPC data sources");
 		return create_utxorpc_data_sources(cfg).await.map_err(|err| {
 			ServiceError::Application(
 				format!("Failed to create UTxO RPC data sources: {err}").into(),
@@ -111,16 +113,8 @@ pub async fn create_mock_data_sources(
 		)?,
 	};
 
-	Ok(DataSources {
-		sidechain_rpc: Arc::new(SidechainRpcDataSourceMock::new(block.clone())),
-		mc_hash: Arc::new(McHashDataSourceMock::new(block)),
-		authority_selection: Arc::new(authority_selection_data_source_mock),
-		cnight_observation: Arc::new(CNightObservationDataSourceMock::new()),
-		federated_authority_observation: Arc::new(
-			FederatedAuthorityObservationDataSourceMock::new(),
-		),
-		bridge: Arc::new(TokenBridgeDataSourceMock::<BridgeRecipient>::new()),
-	})
+	// TODO: Implement proper GovernedMapDataSourceMock
+	unimplemented!("Governed map not supported in mock mode. Use UTxORPC mode instead.")
 }
 
 #[cfg(feature = "utxorpc")]
@@ -128,16 +122,22 @@ pub async fn create_utxorpc_data_sources(
 	cfg: MidnightCfg,
 ) -> std::result::Result<DataSources, Box<dyn Error + Send + Sync + 'static>> {
 	// Get UTxO RPC endpoint from config or environment variable
-	let endpoint = std::env::var("UTXORPC_ENDPOINT")
-		.unwrap_or_else(|_| "http://localhost:50051".to_string());
+	let endpoint = cfg
+		.utxorpc_endpoint
+		.or_else(|| std::env::var("UTXORPC_ENDPOINT").ok())
+		.unwrap_or_else(|| "http://localhost:50051".to_string());
 
 	log::info!("Connecting to UTxO RPC endpoint: {}", endpoint);
 
 	// Create UTxO RPC config
 	let utxo_rpc_config = UtxoRpcConfig {
 		endpoint,
-		security_parameter: cfg.cardano_security_parameter,
-		network_magic: cfg.cardano_network_magic,
+		security_parameter: cfg
+			.cardano_security_parameter
+			.expect("cardano_security_parameter required for UTxORPC") as u64,
+		network_magic: cfg
+			.utxorpc_network_magic
+			.expect("utxorpc_network_magic required for UTxORPC"),
 	};
 
 	// Create shared client
@@ -157,10 +157,7 @@ pub async fn create_utxorpc_data_sources(
 		federated_authority_observation: Arc::new(UtxoRpcFederatedAuthorityDataSource::new(
 			client.clone(),
 		)),
-		bridge: Arc::new(UtxoRpcTokenBridgeDataSource::<BridgeRecipient>::new(
-			client,
-			std::marker::PhantomData,
-		)),
+		bridge: Arc::new(UtxoRpcTokenBridgeDataSource::<BridgeRecipient>::new(client)),
 	})
 }
 
@@ -304,14 +301,8 @@ pub async fn create_cached_data_sources(
 		BRIDGE_TRANSFER_CACHE_LOOKAHEAD,
 	);
 
-	Ok(DataSources {
-		sidechain_rpc: Arc::new(sidechain_rpc),
-		mc_hash: Arc::new(mc_hash),
-		authority_selection: Arc::new(candidates_data_source_cached),
-		cnight_observation: Arc::new(cnight_observation),
-		bridge: Arc::new(bridge),
-		federated_authority_observation: Arc::new(federated_authority_observation),
-	})
+	// TODO: Implement GovernedMapDataSource for db-sync
+	unimplemented!("Governed map not supported in db-sync mode. Use UTxORPC mode instead.")
 }
 
 // Helper for users who only need native token observation data source

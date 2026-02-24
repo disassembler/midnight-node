@@ -73,18 +73,11 @@ impl UtxoRpcGovernedMapDataSource {
         let end_slot = block_info.slot;
 
         // Decode validator address to bytes
-        use pallas_addresses::Address as PallasAddress;
-        let addr = PallasAddress::from_bech32(&scripts.validator_address.to_string())
+        use cardano_serialization_lib::Address;
+        let addr = Address::from_bech32(&scripts.validator_address.to_string())
             .map_err(|e| DataSourceError::InvalidAddress(e.to_string()))?;
 
-        let address_bytes = match addr {
-            PallasAddress::Shelley(shelley) => shelley.to_vec(),
-            _ => {
-                return Err(Box::new(DataSourceError::InvalidAddress(
-                    "Expected Shelley address".to_string(),
-                )));
-            }
-        };
+        let address_bytes = addr.to_bytes();
 
         // Query all CREATE and SPEND events for this address from genesis to end_slot
         let request = ReadUtxoEventsRequest {

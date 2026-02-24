@@ -13,7 +13,6 @@ use midnight_primitives_cnight_observation::{
     CARDANO_REWARD_ADDRESS_LENGTH,
 };
 use midnight_primitives_mainchain_follower::MidnightCNightObservationDataSource;
-use pallas_addresses::Address as PallasAddress;
 use sidechain_domain::McBlockHash;
 
 #[derive(Clone, new)]
@@ -268,15 +267,12 @@ impl UtxoRpcCNightObservationDataSource {
 
     /// Decode Bech32 address to raw bytes
     fn decode_bech32_address(&self, bech32_addr: &str) -> Result<Vec<u8>, DataSourceError> {
-        let addr = PallasAddress::from_bech32(bech32_addr)
+        use cardano_serialization_lib::Address;
+
+        let addr = Address::from_bech32(bech32_addr)
             .map_err(|e| DataSourceError::InvalidAddress(e.to_string()))?;
 
-        match addr {
-            PallasAddress::Shelley(shelley) => Ok(shelley.to_vec()),
-            _ => Err(DataSourceError::InvalidAddress(
-                "Expected Shelley address".to_string(),
-            )),
-        }
+        Ok(addr.to_bytes())
     }
 
     /// Extract script hash (policy ID) from mapping validator address

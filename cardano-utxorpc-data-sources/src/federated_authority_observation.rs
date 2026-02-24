@@ -113,17 +113,12 @@ impl UtxoRpcFederatedAuthorityDataSource {
     }
 
     fn decode_bech32_address(&self, bech32_addr: &str) -> Result<Vec<u8>, DataSourceError> {
-        use pallas_addresses::Address;
+        use cardano_serialization_lib::Address;
 
         let addr = Address::from_bech32(bech32_addr)
             .map_err(|e| DataSourceError::InvalidAddress(e.to_string()))?;
 
-        match addr {
-            Address::Shelley(shelley) => Ok(shelley.to_vec()),
-            _ => Err(DataSourceError::InvalidAddress(
-                "Expected Shelley address".to_string(),
-            )),
-        }
+        Ok(addr.to_bytes())
     }
 
     fn decode_governance_datum(

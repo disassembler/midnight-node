@@ -14,15 +14,15 @@
 //! UTxO RPC data sources for Midnight Node
 //!
 //! This crate provides implementations of Midnight Node data source traits
-//! using the UTxO RPC protocol backed by the Hayate LSM tree indexer.
+//! using the UTxO RPC gRPC protocol.
 //!
 //! ## Architecture
 //!
 //! ```text
-//! Cardano Node (SanchoNet)
-//!     ↓ chain-sync (Pallas)
-//! Hayate Indexer (LSM tree implementation)
-//!     ↓ Internal Rust API
+//! Cardano Node
+//!     ↓ chain-sync
+//! UTxO RPC Indexer
+//!     ↓ Internal API
 //! UTxO RPC gRPC Server (port 50051)
 //!     ↓ gRPC protocol
 //! midnight-node Data Sources (this crate)

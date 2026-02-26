@@ -19,6 +19,22 @@ use sidechain_domain::mainchain_epoch::MainchainEpochConfig;
 use super::validation_utils::{maybe, path_exists};
 use super::{CfgHelp, HelpField, cfg_help, error::CfgError, util::get_keys};
 
+/// Cardano data source backend
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CardanoBackend {
+	/// Use db-sync PostgreSQL database for Cardano data
+	DbSync,
+	/// Use UTxORPC gRPC interface for Cardano data
+	Utxorpc,
+}
+
+impl Default for CardanoBackend {
+	fn default() -> Self {
+		Self::DbSync
+	}
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, Validate, Documented)]
 #[validate(custom = main_chain_follower_vars)]
 /// Parameters specific to Midnight
@@ -64,18 +80,22 @@ pub struct MidnightCfg {
 	#[serde(rename = "mc__slot_duration_millis")]
 	pub mc_slot_duration_millis: u64,
 
-	/// Use UTxORPC/Hayate for Cardano data instead of db-sync
-	pub use_utxorpc: bool,
+	/// Cardano data source backend
+	/// Options: "dbsync" (default), "utxorpc"
+	pub cardano_backend: CardanoBackend,
 
 	/// UTxORPC gRPC endpoint (e.g., "http://localhost:50051")
-	/// Required if use_utxorpc is true
+	/// Required if cardano_backend is "utxorpc"
 	pub utxorpc_endpoint: Option<String>,
 
 	/// Cardano network magic number for UTxORPC
+	/// Required if cardano_backend is "utxorpc"
 	/// - SanchoNet: 4
 	/// - Mainnet: 764824073
 	pub utxorpc_network_magic: Option<u64>,
 
+	/// PostgreSQL connection string for db-sync database
+	/// Required if cardano_backend is "dbsync"
 	/// see partner-chains ConnectionConfig
 	#[doc_tag(secret)]
 	pub db_sync_postgres_connection_string: Option<String>,
@@ -128,34 +148,41 @@ fn main_chain_follower_vars(cfg: &MidnightCfg) -> Result<(), validation::Error> 
 					.to_string(),
 			));
 		}
-	} else if cfg.use_utxorpc {
-		// UTxORPC mode - validate UTxORPC-specific parameters
-		if cfg.utxorpc_endpoint.is_none() {
-			return Err(validation::Error::Custom(
-				"utxorpc_endpoint must be defined if use_utxorpc is true".to_string(),
-			));
-		}
-		if cfg.cardano_security_parameter.is_none() {
-			return Err(missing("cardano_security_parameter"));
-		}
-		if cfg.utxorpc_network_magic.is_none() {
-			return Err(validation::Error::Custom(
-				"utxorpc_network_magic must be defined if use_utxorpc is true".to_string(),
-			));
-		}
 	} else {
-		// db-sync mode - validate db-sync-specific parameters
-		if cfg.db_sync_postgres_connection_string.is_none() {
-			return Err(missing("db_sync_postgres_connection_string"));
-		}
-		if cfg.cardano_security_parameter.is_none() {
-			return Err(missing("cardano_security_parameter"));
-		}
-		if cfg.cardano_active_slots_coeff.is_none() {
-			return Err(missing("cardano_active_slots_coeff"));
-		}
-		if cfg.block_stability_margin.is_none() {
-			return Err(missing("block_stability_margin"));
+		match cfg.cardano_backend {
+			CardanoBackend::Utxorpc => {
+				// UTxORPC mode - validate UTxORPC-specific parameters
+				if cfg.utxorpc_endpoint.is_none() {
+					return Err(validation::Error::Custom(
+						"utxorpc_endpoint must be defined when cardano_backend is \"utxorpc\""
+							.to_string(),
+					));
+				}
+				if cfg.cardano_security_parameter.is_none() {
+					return Err(missing("cardano_security_parameter"));
+				}
+				if cfg.utxorpc_network_magic.is_none() {
+					return Err(validation::Error::Custom(
+						"utxorpc_network_magic must be defined when cardano_backend is \"utxorpc\""
+							.to_string(),
+					));
+				}
+			}
+			CardanoBackend::DbSync => {
+				// db-sync mode - validate db-sync-specific parameters
+				if cfg.db_sync_postgres_connection_string.is_none() {
+					return Err(missing("db_sync_postgres_connection_string"));
+				}
+				if cfg.cardano_security_parameter.is_none() {
+					return Err(missing("cardano_security_parameter"));
+				}
+				if cfg.cardano_active_slots_coeff.is_none() {
+					return Err(missing("cardano_active_slots_coeff"));
+				}
+				if cfg.block_stability_margin.is_none() {
+					return Err(missing("block_stability_margin"));
+				}
+			}
 		}
 	}
 	Ok(())

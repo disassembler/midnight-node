@@ -389,7 +389,7 @@ impl UtxoRpcCNightObservationDataSource {
 
             let cardano_reward_address = self.credential_to_reward_address_bytes(&credential, network)?;
 
-            // Create observed UTxO with metadata from Hayate
+            // Create observed UTxO with metadata from UTxO RPC
             let header = ObservedUtxoHeader {
                 tx_position: CardanoPosition {
                     block_hash: bytes_to_mc_block_hash(&utxo.created_at_block_hash)?,

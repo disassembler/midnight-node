@@ -28,7 +28,7 @@ use sp_governed_map::GovernedMapDataSource;
 use sp_partner_chains_bridge::TokenBridgeDataSource;
 use sqlx::{Pool, Postgres};
 
-use super::cfg::midnight_cfg::MidnightCfg;
+use super::cfg::midnight_cfg::{CardanoBackend, MidnightCfg};
 use midnight_primitives::BridgeRecipient;
 use partner_chains_mock_data_sources::MockRegistrationsConfig;
 use sidechain_domain::mainchain_epoch::{Duration, MainchainEpochConfig, Timestamp};
@@ -75,7 +75,9 @@ pub(crate) async fn create_cached_main_chain_follower_data_sources(
 ) -> std::result::Result<DataSources, ServiceError> {
 	// Check for UTxO RPC mode (via config or environment variable)
 	#[cfg(feature = "utxorpc")]
-	if cfg.use_utxorpc || std::env::var("USE_UTXORPC").unwrap_or_default() == "true" {
+	if cfg.cardano_backend == CardanoBackend::Utxorpc
+		|| std::env::var("CARDANO_BACKEND").as_deref() == Ok("utxorpc")
+	{
 		log::info!("Using UTxO RPC data sources");
 		return create_utxorpc_data_sources(cfg).await.map_err(|err| {
 			ServiceError::Application(

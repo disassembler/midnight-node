@@ -1,17 +1,17 @@
 # UTxO RPC Integration for Midnight Node
 
-This document describes the UTxO RPC data source integration that replaces the PostgreSQL + db-sync + Ogmios stack with a direct connection to the Hayate LSM tree indexer via gRPC.
+This document describes the UTxO RPC data source integration that replaces the PostgreSQL + db-sync + Ogmios stack with a direct gRPC connection to a UTxO RPC server.
 
 ## Overview
 
-**Goal:** Use Hayate's UTxO RPC server instead of PostgreSQL-based mainchain observation.
+**Goal:** Use UTxO RPC server instead of PostgreSQL-based mainchain observation.
 
 **Architecture:**
 ```
 Cardano Node (SanchoNet, magic: 4)
-    ↓ chain-sync (Pallas)
-Hayate Indexer (LSM tree implementation)
-    ↓ Internal Rust API
+    ↓ chain-sync
+UTxO RPC Indexer
+    ↓ Internal API
 UTxO RPC gRPC Server (port 50051)
     ↓ gRPC protocol (tonic)
 cardano-utxorpc-data-sources (NEW)
@@ -31,7 +31,7 @@ Midnight Node Pallets
 ### After (UTxO RPC Stack)
 - ✅ UTxO RPC gRPC endpoint (`http://localhost:50051`)
 - ✅ `cardano-utxorpc-data-sources` crate (NEW)
-- ✅ Direct queries to Hayate LSM tree
+- ✅ Direct queries to UTxO RPC indexer
 - ✅ Single gRPC client connection
 - ✅ Async/await-based queries
 
@@ -47,7 +47,7 @@ cardano-utxorpc-data-sources/
 ├── build.rs                      # Proto compilation
 ├── proto/
 │   └── utxorpc/
-│       ├── query.proto          # Copied from Hayate
+│       ├── query.proto          # UTxO RPC protocol definitions
 │       ├── watch.proto
 │       └── submit.proto
 └── src/
@@ -147,7 +147,7 @@ pub async fn create_utxorpc_data_sources(
 ```
 
 Modified `create_cached_main_chain_follower_data_sources()`:
-- Checks for `USE_UTXORPC=true` environment variable
+- Checks for `cardano_backend = "utxorpc"` in config or `CARDANO_BACKEND=utxorpc` environment variable
 - If set, uses `create_utxorpc_data_sources()` instead of db-sync
 
 #### 2. **`node/Cargo.toml`**
@@ -186,18 +186,34 @@ default = ["utxorpc"]
 
 ### Running Midnight Node with UTxO RPC
 
-1. **Start Hayate UTxO RPC Server:**
-   ```bash
-   cd /home/sam/work/iohk/hayate
-   cargo run --example query_server -- \
-       --db-path ./hayate-db \
-       --network sanchonet \
-       --port 50051
-   ```
+1. **Start UTxO RPC Server:**
+
+   Start your UTxO RPC server implementation (e.g., on port 50051).
+   The server should support the UTxO RPC gRPC protocol for the target network.
 
 2. **Start Midnight Node:**
+
+   **Option A: Using config file (recommended)**
+
+   Create or edit `res/cfg/mynetwork.toml`:
+   ```toml
+   cardano_backend = "utxorpc"
+   utxorpc_endpoint = "http://localhost:50051"
+   utxorpc_network_magic = 4  # SanchoNet
+   cardano_security_parameter = 2160
+   ```
+
+   Then run:
    ```bash
-   export USE_UTXORPC=true
+   CFG_PRESET=mynetwork cargo run --release --features utxorpc -- \
+       --chain chain-spec-raw.json \
+       --validator \
+       --base-path /tmp/midnight-test
+   ```
+
+   **Option B: Using environment variables**
+   ```bash
+   export CARDANO_BACKEND=utxorpc
    export UTXORPC_ENDPOINT=http://localhost:50051
 
    cargo run --release --features utxorpc -- \
@@ -206,12 +222,13 @@ default = ["utxorpc"]
        --base-path /tmp/midnight-test
    ```
 
-### Environment Variables
+### Configuration
 
-| Variable | Default | Description |
+| Config Field / Env Variable | Default | Description |
 |----------|---------|-------------|
-| `USE_UTXORPC` | `false` | Enable UTxO RPC data sources |
-| `UTXORPC_ENDPOINT` | `http://localhost:50051` | gRPC endpoint URL |
+| `cardano_backend` / `CARDANO_BACKEND` | `dbsync` | Cardano data source: "dbsync" or "utxorpc" |
+| `utxorpc_endpoint` / `UTXORPC_ENDPOINT` | `http://localhost:50051` | gRPC endpoint URL |
+| `utxorpc_network_magic` | (required) | Network magic number (4 for SanchoNet, 764824073 for Mainnet) |
 | `GOVERNANCE_AUTHORITY_POLICY` | - | Governance policy ID (hex) |
 | `PERMISSIONED_CANDIDATES_POLICY` | - | Candidates policy ID (hex) |
 
@@ -219,7 +236,7 @@ default = ["utxorpc"]
 
 ### Services Used
 
-From Hayate proto definitions:
+From UTxO RPC protocol definitions:
 
 #### QueryService
 ```protobuf
@@ -253,7 +270,7 @@ message GetChainTipResponse {
 ### Key Implementation Details
 
 1. **Datum Decoding:**
-   - Hayate returns raw CBOR bytes in `Utxo.datum`
+   - UTxO RPC returns raw CBOR bytes in `Utxo.datum`
    - Use `cardano-serialization-lib` to decode to `PlutusData`
    - Parse governance multisig format (threshold, Sr25519 keys)
 
@@ -261,7 +278,7 @@ message GetChainTipResponse {
    - Input: Bech32 strings (e.g., `addr_test1...`)
    - Conversion: `pallas-addresses` for Bech32 → raw bytes
    - Query: Raw bytes sent to UTxO RPC
-   - Index: Hayate indexes by hex-encoded address internally
+   - Index: UTxO RPC server indexes by hex-encoded address internally
 
 3. **Policy ID Filtering:**
    - Query UTxOs at governance address
@@ -291,14 +308,14 @@ mod tests {
 
 1. **Test with Mock Data:**
    ```bash
-   USE_UTXORPC=false  # Use mocks
+   CARDANO_BACKEND=dbsync  # Use mocks or db-sync
    cargo test
    ```
 
-2. **Test with Real Hayate:**
+2. **Test with Real UTxO RPC Server:**
    ```bash
-   # Start Hayate first
-   USE_UTXORPC=true UTXORPC_ENDPOINT=http://localhost:50051 \
+   # Start UTxO RPC server first
+   CARDANO_BACKEND=utxorpc UTXORPC_ENDPOINT=http://localhost:50051 \
    cargo test --features utxorpc
    ```
 
@@ -319,7 +336,7 @@ mod tests {
 2. **Add Transaction History Querying:**
    - [ ] Implement `get_tx_history()` for address monitoring
    - [ ] Track transaction positions (block_number, tx_index_in_block)
-   - [ ] Convert Hayate slot numbers to Cardano positions
+   - [ ] Convert UTxO RPC slot numbers to Cardano positions
 
 ### Priority 2: Enhanced Functionality
 
@@ -335,7 +352,7 @@ mod tests {
    - [ ] Handle cNIGHT ↔ DUST transfers
 
 5. **Block-by-Number Queries:**
-   - [ ] Add Hayate support for block number queries (if needed)
+   - [ ] Add UTxO RPC support for block number queries (if needed)
    - [ ] Implement `get_block_hash_by_number()` in SidechainRpc
 
 ### Priority 3: Testing & Robustness
@@ -343,11 +360,11 @@ mod tests {
 6. **Error Handling:**
    - [ ] Better error messages for connection failures
    - [ ] Retry logic for transient failures
-   - [ ] Graceful degradation when Hayate is unavailable
+   - [ ] Graceful degradation when UTxO RPC server is unavailable
 
 7. **Testing:**
    - [ ] Unit tests with mock gRPC server
-   - [ ] Integration tests with real Hayate
+   - [ ] Integration tests with real UTxO RPC server
    - [ ] Test governance datum parsing edge cases
    - [ ] Test multi-asset queries
 
@@ -376,16 +393,14 @@ mod tests {
 
 #### 1. "Failed to connect to UTxO RPC"
 
-**Cause:** Hayate server not running or wrong endpoint
+**Cause:** UTxO RPC server not running or wrong endpoint
 
 **Fix:**
 ```bash
-# Check if Hayate is running:
+# Check if UTxO RPC server is running:
 curl -v http://localhost:50051
 
-# Start Hayate:
-cd /home/sam/work/iohk/hayate
-cargo run --example query_server -- --port 50051 --network sanchonet
+# Start your UTxO RPC server on the appropriate network
 ```
 
 #### 2. "No governance datum found at script address"
@@ -394,7 +409,7 @@ cargo run --example query_server -- --port 50051 --network sanchonet
 
 **Fix:**
 - Verify governance addresses in config
-- Check Hayate indexer has synced to current block
+- Check UTxO RPC indexer has synced to current block
 - Verify policy ID matches genesis transaction
 
 #### 3. "returning empty UTxOs" (CNight observation)
@@ -405,7 +420,7 @@ cargo run --example query_server -- --port 50051 --network sanchonet
 
 **Workaround:** Use mock data sources for testing:
 ```bash
-USE_UTXORPC=false  # Falls back to mocks
+CARDANO_BACKEND=dbsync  # Falls back to db-sync or mocks
 ```
 
 ## Performance Comparison
@@ -418,11 +433,11 @@ USE_UTXORPC=false  # Falls back to mocks
 - **Setup Time:** Hours to days (full sync)
 - **Connection Pools:** 7 separate pools
 
-### UTxO RPC + Hayate (After)
+### UTxO RPC (After)
 
 - **Latency:** 5-20ms per query (gRPC, local)
-- **Dependencies:** Hayate only
-- **Disk Usage:** ~50GB for mainnet (LSM tree)
+- **Dependencies:** UTxO RPC server only
+- **Disk Usage:** Varies by implementation (~50GB+ for mainnet)
 - **Setup Time:** Minutes to hours (LSM tree sync faster)
 - **Connections:** 1 shared gRPC client
 
@@ -458,7 +473,7 @@ USE_UTXORPC=false  # Falls back to mocks
    - Firewall rules simple (no PostgreSQL port)
 
 3. **gRPC Security:**
-   - TODO: Add TLS support for remote Hayate servers
+   - TODO: Add TLS support for remote UTxO RPC servers
    - TODO: Add authentication tokens
 
 ## Future Enhancements
@@ -484,8 +499,7 @@ USE_UTXORPC=false  # Falls back to mocks
 
 ## References
 
-- **Hayate Repository:** `/home/sam/work/iohk/hayate`
-- **UTxO RPC Spec:** Custom Hayate proto definitions
+- **UTxO RPC Protocol:** gRPC protocol definitions for Cardano UTxO queries
 - **Midnight Node:** `/home/sam/work/iohk/midnight-node`
 - **Partner Chains:** https://github.com/input-output-hk/partner-chains
 

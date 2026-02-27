@@ -57,10 +57,10 @@ cardano-utxorpc-data-sources/
     ├── mc_hash.rs              # ✅ IMPLEMENTED: McHashDataSource
     ├── authority_selection.rs   # ✅ IMPLEMENTED: NoOp for federated
     ├── sidechain_rpc.rs        # ✅ IMPLEMENTED: SidechainRpcDataSource
-    ├── governed_map.rs         # ⚠️  STUB: GovernedMapDataSource
+    ├── governed_map.rs         # ✅ IMPLEMENTED: GovernedMapDataSource
     ├── bridge.rs               # ⚠️  STUB: TokenBridgeDataSource
     ├── federated_authority_observation.rs  # ✅ IMPLEMENTED: Governance queries
-    └── cnight_observation.rs   # ⚠️  STUB: CNight token observation
+    └── cnight_observation.rs   # ✅ IMPLEMENTED: CNight token observation
 ```
 
 ### Implementation Status
@@ -89,26 +89,31 @@ cardano-utxorpc-data-sources/
    - ✅ Bech32 address decoding
    - ✅ Complete implementation matching db-sync behavior
 
-#### ⚠️  Partial / Stub Implementations
-
 5. **`UtxoRpcGovernedMapDataSource`** (`governed_map.rs`)
-   - ⚠️  Returns empty `GovernedMapUpdate`
-   - 🔧 TODO: Implement governance parameter queries
+   - ✅ `get_state_at_block()`
+   - ✅ Queries governance parameter UTxOs
+   - ✅ Decodes governed map datums from PlutusData
+   - ✅ Reconstructs state by querying UTxO events
+   - ✅ Returns BTreeMap of parameter key-value pairs
 
-6. **`UtxoRpcTokenBridgeDataSource`** (`bridge.rs`)
+6. **`UtxoRpcCNightObservationDataSource`** (`cnight_observation.rs`)
+   - ✅ `get_utxos_up_to_capacity()`
+   - ✅ All 6 UTxO query types implemented:
+     1. ✅ Registration UTxOs (mapping validator + auth token)
+     2. ✅ Deregistration UTxOs
+     3. ✅ Asset Create UTxOs (cNIGHT minting)
+     4. ✅ Asset Spend UTxOs (cNIGHT burning)
+     5. ✅ Redemption Create UTxOs
+     6. ✅ Redemption Spend UTxOs
+   - ✅ Datum decoding and credential extraction
+   - ✅ Multi-asset queries with cNIGHT policy ID
+
+#### ⚠️  Stub Implementations
+
+7. **`UtxoRpcTokenBridgeDataSource`** (`bridge.rs`)
    - ⚠️  Returns empty incoming/outgoing transfers
    - 🔧 TODO: Implement bridge contract queries
    - 🔧 TODO: Query cNIGHT <-> DUST bridge UTxOs
-
-7. **`UtxoRpcCNightObservationDataSource`** (`cnight_observation.rs`)
-   - ⚠️  Returns empty `ObservedUtxos` (logs warning)
-   - 🔧 TODO: Implement 6 different UTxO query types:
-     1. Registration UTxOs (mapping validator + auth token)
-     2. Deregistration UTxOs
-     3. Asset Create UTxOs (cNIGHT minting)
-     4. Asset Spend UTxOs (cNIGHT burning)
-     5. Redemption Create UTxOs
-     6. Redemption Spend UTxOs
 
 ## Integration with Midnight Node
 
@@ -323,59 +328,43 @@ mod tests {
 
 ### Priority 1: Critical for Basic Operation
 
-1. **Complete CNight Observation Queries:**
-   - [ ] Implement `query_registration_utxos()`
-   - [ ] Implement `query_deregistration_utxos()`
-   - [ ] Implement `query_asset_create_utxos()` (minting events)
-   - [ ] Implement `query_asset_spend_utxos()` (burning events)
-   - [ ] Implement `query_redemption_create_utxos()`
-   - [ ] Implement `query_redemption_spend_utxos()`
-   - [ ] Parse registration datums (Cardano address → DUST public key)
-   - [ ] Handle multi-asset queries with cNIGHT policy ID
-
-2. **Add Transaction History Querying:**
-   - [ ] Implement `get_tx_history()` for address monitoring
-   - [ ] Track transaction positions (block_number, tx_index_in_block)
-   - [ ] Convert UTxO RPC slot numbers to Cardano positions
+1. **Bridge Implementation:**
+   - [ ] Query bridge contract UTxOs
+   - [ ] Implement `get_transfers()` for bridge transfers
+   - [ ] Handle cNIGHT ↔ DUST transfers
 
 ### Priority 2: Enhanced Functionality
 
-3. **Governed Map Implementation:**
-   - [ ] Query governance parameter UTxOs
-   - [ ] Decode governed map updates
-   - [ ] Track parameter changes
-
-4. **Bridge Implementation:**
-   - [ ] Query bridge contract UTxOs
-   - [ ] Implement `get_latest_incoming_txs()`
-   - [ ] Implement `get_latest_outgoing_tx_merkle_root()`
-   - [ ] Handle cNIGHT ↔ DUST transfers
-
-5. **Block-by-Number Queries:**
+2. **Block-by-Number Queries:**
    - [ ] Add UTxO RPC support for block number queries (if needed)
    - [ ] Implement `get_block_hash_by_number()` in SidechainRpc
 
+3. **Transaction History Querying:**
+   - [ ] Implement `get_tx_history()` for address monitoring (if needed)
+   - [ ] Additional transaction position tracking enhancements
+
 ### Priority 3: Testing & Robustness
 
-6. **Error Handling:**
+4. **Error Handling:**
    - [ ] Better error messages for connection failures
    - [ ] Retry logic for transient failures
    - [ ] Graceful degradation when UTxO RPC server is unavailable
 
-7. **Testing:**
+5. **Testing:**
    - [ ] Unit tests with mock gRPC server
    - [ ] Integration tests with real UTxO RPC server
    - [ ] Test governance datum parsing edge cases
    - [ ] Test multi-asset queries
+   - [ ] End-to-end tests with CNight observation
 
-8. **Performance:**
+6. **Performance:**
    - [ ] Add caching layer for frequently queried data
    - [ ] Batch UTxO queries where possible
    - [ ] Monitor gRPC connection health
 
 ### Priority 4: Documentation & Cleanup
 
-9. **Documentation:**
+7. **Documentation:**
    - [ ] Add rustdoc comments to all public APIs
    - [ ] Document governance datum format
    - [ ] Add usage examples

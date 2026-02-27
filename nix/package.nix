@@ -1,7 +1,7 @@
 {
   inputs,
   pkgs,
-  targetSystem
+  targetSystem,
 }: let
   inherit (pkgs) lib;
 
@@ -38,7 +38,7 @@
         ]
         ++ lib.optionals pkgs.stdenv.isLinux [
           pkgs.pkg-config
-          pkgs.llvmPackages.lld
+          pkgs.llvmPackages_21.lld
           pkgs.stdenv.cc.cc.lib
         ];
       buildInputs =
@@ -54,18 +54,18 @@
     }
     // lib.optionalAttrs pkgs.stdenv.isLinux {
       # Use lld for faster linking and better handling of large projects
-        RUSTFLAGS = "-Clink-arg=-fuse-ld=lld";
+      RUSTFLAGS = "-Clink-arg=-fuse-ld=lld";
       # The Wasm linker for wasm32v1-none target:
-        CARGO_TARGET_WASM32V1_NONE_LINKER = "${pkgs.llvmPackages.lld}/bin/wasm-ld";
-        # Required for substrate-wasm-builder to find libstdc++
-        LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
-        # Skip WASM build for polkadot-sdk test runtime (has broken path deps to cumulus when vendored)
-        # See: https://paritytech.github.io/polkadot-sdk/master/substrate_wasm_builder/index.html
-        SKIP_FRAME_STORAGE_ACCESS_TEST_RUNTIME_WASM_BUILD = "1";
+      CARGO_TARGET_WASM32V1_NONE_LINKER = "${pkgs.llvmPackages_21.lld}/bin/wasm-ld";
+      # Required for substrate-wasm-builder to find libstdc++
+      LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
+      # Skip WASM build for polkadot-sdk test runtime (has broken path deps to cumulus when vendored)
+      # See: https://paritytech.github.io/polkadot-sdk/master/substrate_wasm_builder/index.html
+      SKIP_FRAME_STORAGE_ACCESS_TEST_RUNTIME_WASM_BUILD = "1";
     }
     // lib.optionalAttrs pkgs.stdenv.isDarwin {
       # for bindgen, used by libproc, used by metrics_process
-      LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+      LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages_21.libclang}/lib";
       CRATE_CC_NO_DEFAULTS = "1";
     };
 

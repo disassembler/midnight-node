@@ -713,7 +713,9 @@ impl pallet_tx_pause::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type PauseOrigin = EnsureRoot<AccountId>;
 	type UnpauseOrigin = EnsureRoot<AccountId>;
-	type WhitelistedCalls = Nothing;
+	// Whitelist all calls to prevent transaction validation panics
+	// Governance calls are already restricted by CheckCallFilter extension
+	type WhitelistedCalls = frame_support::traits::Everything;
 	type MaxNameLen = ConstU32<256>;
 	type WeightInfo = pallet_tx_pause::weights::SubstrateWeight<Runtime>;
 }

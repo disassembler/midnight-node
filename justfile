@@ -1,6 +1,10 @@
 # Justfile for Midnight Node
 # This Justfile is used to define tasks for building, testing, and running the Midnight Node.
 
+# List all available recipes
+default:
+  @just --list
+
 hardfork-e2e NODE_IMAGE UPGRADER_IMAGE:
   @scripts/tests/hardfork-e2e.sh {{NODE_IMAGE}} {{UPGRADER_IMAGE}}
   @echo "✅ Hardfork E2E test completed successfully."
